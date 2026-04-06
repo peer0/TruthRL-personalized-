@@ -106,28 +106,27 @@ def default_compute_score(
 
     elif data_source == 'TruthRL_crag':
         from . import truthrl_qa
+        from .symbolic_process_reward import SymbolicProcessReward
 
-        process_reward = 0.0
+        # Symbolic process reward (deterministic, no LLM calls)
+        symbolic_reward = SymbolicProcessReward()
+        prompt_str = ground_truth.get('prompt', None) if isinstance(ground_truth, dict) else None
+        process_result = symbolic_reward.score(solution_str, prompt=prompt_str)
+        process_reward = process_result['process_score']
 
+        # LLM-as-a-judge outcome reward (ternary: +1 correct, 0 abstain, -1 hallucinate)
         outcome_reward = truthrl_qa.compute_score_llm_as_a_judge_ternary(solution_str, ground_truth, process_reward)
 
-        # raw (outcome only reward)
-        final_score = outcome_reward
+        # Additive combination (Section 4.6 of TruthRL paper)
+        process_lambda = 0.5
+        final_score = outcome_reward + process_lambda * process_reward
 
-        # outcome + process reward
-        # category
-        # if outcome_reward == 1:
-        #     final_score = outcome_reward * process_reward
-        # else:
-        #     final_score = outcome_reward
-        
-        # sum
-        # final_score = outcome_reward + 0.5 * process_reward
-
-        # multiply
-        # final_score = outcome_reward * (1 + process_reward)
-        
-        res = {'score': float(final_score), 'process_score': process_reward, 'outcome_score': outcome_reward}
+        res = {
+            'score': float(final_score),
+            'outcome_score': outcome_reward,
+            'process_score': process_reward,
+            'process_details': process_result,
+        }
 
     else:
         raise NotImplementedError(f"Reward function is not implemented for {data_source=}")
