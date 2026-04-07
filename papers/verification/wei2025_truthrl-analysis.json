@@ -1,0 +1,64 @@
+{
+  "title": "TruthRL: Incentivizing Truthful LLMs via Reinforcement Learning",
+  "authors": [
+    "Zhepei Wei", "Xiao Yang", "Kai Sun", "Jiaqi Wang", "Rulin Shao",
+    "Sean Chen", "Mohammad Kachuee", "Teja Gollapudi", "Tony Liao",
+    "Nicolas Scheffer", "Rakesh Wanga", "Anuj Kumar", "Yu Meng",
+    "Wen-tau Yih", "Xin Luna Dong"
+  ],
+  "year": 2025,
+  "venue": "arXiv:2509.25760v1 [cs.CL] (Meta Reality Labs / UVA / UW / FAIR)",
+  "pdf_path": "/Users/jay/projects/papers/abstention/Meta2025_TruthRL.pdf",
+  "analyzed_date": "2026-04-07",
+  "category": "verification",
+  "key_claims": [
+    "Accuracy-driven training (vanilla SFT, binary-reward RL) inherently incentivizes guessing over abstention, amplifying hallucinations.",
+    "A simple ternary reward (+1 correct, 0 abstain, -1 hallucinate) with GRPO reduces hallucinations by up to 28.9% and improves truthfulness by up to 21.1% over vanilla RL.",
+    "Improvement arises from genuine knowledge boundary recognition, not over-conservatism: TruthRL abstains on questions where the model genuinely lacks knowledge.",
+    "More complicated rewards (knowledge-enhanced, reasoning-enhanced) do not outperform the simple ternary reward.",
+    "LLM-based verifier is critical; rule-based (string matching) verifier causes model collapse (T=-3.6) due to semantic mismatch."
+  ],
+  "method": "GRPO-based online RL with a ternary reward function. For each question, G responses are sampled; advantage is computed via group-normalized rewards: A_i = (r_i - mean(r)) / std(r). Under ternary reward, abstention (r=0) gets higher advantage than hallucination (r=-1), explicitly incentivizing abstention over guessing. Knowledge boundary probing samples 256 responses per training question to identify OOK questions. Optional knowledge-enhanced variant gives +1 for abstention on OOK questions. Training: VeRL framework, 8xH100, GRPO with lr=1e-6, batch=64, beta=0.001, eps=0.2, max_ctx=16384, max_gen=2048. vLLM rollouts with tensor_parallel=2. Evaluation: LLM-as-a-judge (Llama3.3-70B) with T = Acc - Hall (w1=1,w2=0,w3=1). Benchmarks: CRAG, NQ, HotpotQA, MuSiQue with/without retrieval.",
+  "results": [
+    {"metric": "Avg Truthfulness (Llama3.1-8B, w/ retrieval)", "value": "25.6", "baseline": "vs. -16.4 prompting, -17.8 SFT, 4.5 binary RL"},
+    {"metric": "Avg Hallucination (Llama3.1-8B, w/ retrieval)", "value": "18.8%", "baseline": "vs. 54.1% prompting, 58.9% SFT, 47.7% binary RL"},
+    {"metric": "Avg Accuracy (Llama3.1-8B, w/ retrieval)", "value": "44.4%", "baseline": "vs. 37.7% prompting, 41.1% SFT, 52.2% binary RL"},
+    {"metric": "CRAG T (Llama3.1-8B, w/ retrieval)", "value": "37.2", "baseline": "+31.9 over prompting (5.3)"},
+    {"metric": "CRAG H (Llama3.1-8B, w/ retrieval)", "value": "19.4%", "baseline": "-24.1pp from prompting (43.5%)"},
+    {"metric": "Rule-based verifier (CRAG)", "value": "T=-3.6, H=3.6%", "baseline": "Collapse vs. LLM verifier T=37.2"},
+    {"metric": "DPO offline (avg)", "value": "T=-10.1, H=51.1%", "baseline": "TruthRL online: T=25.6, H=18.8%"},
+    {"metric": "Iterative DPO best (avg, iter 3)", "value": "T=12.6, H=31.7%", "baseline": "TruthRL online: T=25.6, H=18.8%"},
+    {"metric": "Ternary+knowledge-enhanced (avg)", "value": "T=23.2, H=18.9%", "baseline": "Simple ternary: T=25.6, H=18.8% (knowledge-enhanced slightly worse)"},
+    {"metric": "Hallucination-baiting questions (CRAG)", "value": "T=52.4, H=16.5%", "baseline": "vs. prompting T=9.7/H=39.8%"},
+    {"metric": "Difficult questions hallucination (CRAG)", "value": "15.5%", "baseline": "vs. SFT 100%, binary RL 99.1%"},
+    {"metric": "Reasoning score (outcome-only, CRAG)", "value": "56.6", "baseline": "vs. prompting 50.2 (implicit improvement)"},
+    {"metric": "Reasoning score (additive r_reason, CRAG)", "value": "59.1", "baseline": "Best reasoning but T drops 37.2->36.1"},
+    {"metric": "Scale: Qwen2.5-32B (CRAG)", "value": "T=40.0, H=18.2%", "baseline": "vs. prompting T=29.1, H=27.1%"},
+    {"metric": "Scale: Llama3.2-3B (CRAG)", "value": "T=27.4, H=21.5%", "baseline": "vs. prompting T=1.9, H=45.1%"},
+    {"metric": "Judge robustness (avg across 3 judges)", "value": "T=37.5, H=19.3%", "baseline": "Consistent across Llama/Qwen/Gemma judges"}
+  ],
+  "limitations": [
+    "Single training dataset (CRAG only); generalization to code, math, creative writing untested.",
+    "LLM judge dependency: reward signal relies on Llama3.3-70B verifier with inherent biases.",
+    "Truthfulness metric sets w2=0 (no credit for appropriate abstention in evaluation).",
+    "Knowledge boundary probing requires 256 samples per question (expensive, model-specific).",
+    "Reasoning reward integration shows mixed results; mechanism for implicit reasoning improvement unexplored.",
+    "No middle-ground between string matching (collapses) and full LLM judge explored.",
+    "Abstention classification method during reward assignment not fully detailed.",
+    "No comparison with calibration-theoretic methods (RLCR, Rewarding Doubt, CDA).",
+    "Binary abstention only ('I don't know') -- no graded confidence expression."
+  ],
+  "connections": [
+    "Direct foundation of TruthRL-personalized- project; ternary reward implemented in training/verl/verl/utils/reward_score/truthrl_qa.py.",
+    "Table 5 rule-based collapse (T=-3.6) motivates project's hybrid approach: symbolic process reward + LLM outcome reward.",
+    "Section 4.6 mixed reasoning reward results validate project Direction 3: target decidable structural properties, not LLM-judged reasoning.",
+    "GRPO advantage mechanism (group-normalized) is key context for composing additional reward signals.",
+    "Consistent with AbstentionBench finding that reasoning fine-tuning degrades abstention by 24%.",
+    "Complementary to RLCR (Brier score) and Rewarding Doubt (log scoring rules) at ICLR 2026."
+  ],
+  "tags": [
+    "abstention", "RL", "GRPO", "truthfulness", "hallucination",
+    "ternary-reward", "LLM-judge", "CRAG", "knowledge-boundary",
+    "process-reward", "calibration", "retrieval-augmented"
+  ]
+}

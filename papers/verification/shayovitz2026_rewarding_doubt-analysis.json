@@ -1,0 +1,38 @@
+{
+  "title": "Rewarding Doubt: A Reinforcement Learning Approach to Confidence Calibration of LLMs",
+  "authors": ["Ido Shayovitz", "Gal Rabinovich"],
+  "year": 2026,
+  "venue": "ICLR 2026",
+  "pdf_path": "/Users/jay/projects/papers/abstention/ICLR2026_Rewarding_Doubt_A_Reinfo.pdf",
+  "analyzed_date": "2026-04-07",
+  "category": "verification",
+  "key_claims": [
+    "LLMs can be trained to produce well-calibrated confidence scores alongside answers through RL with proper scoring rule-based rewards.",
+    "Log scoring rules (logarithmic proper scoring rules) provide theoretically grounded reward signals that incentivize honest confidence reporting.",
+    "The approach produces calibrated models that can abstain on low-confidence predictions, achieving better accuracy-coverage trade-offs than baselines.",
+    "Confidence calibration through RL generalizes across tasks and does not require task-specific reward engineering."
+  ],
+  "method": "RL fine-tuning with scoring rule-based rewards for confidence calibration. The model generates both an answer and a confidence score (probability). The reward is computed using a logarithmic proper scoring rule: R = log(p) if correct, R = log(1-p) if incorrect, where p is the model's stated confidence. This incentivizes the model to report confidence that matches its actual accuracy rate (calibration). Training uses PPO (Proximal Policy Optimization) on QA datasets. At inference time, the confidence score enables threshold-based abstention: if confidence < threshold, the model abstains. The threshold can be tuned for desired accuracy-coverage trade-offs.",
+  "results": [
+    {"metric": "ECE (Expected Calibration Error)", "value": "Significant reduction vs. baselines", "baseline": "vs. vanilla, temperature scaling, verbalized confidence"},
+    {"metric": "Accuracy at 80% coverage", "value": "Higher than baselines", "baseline": "vs. uncalibrated model and post-hoc methods"},
+    {"metric": "Selective prediction AUC", "value": "Improved", "baseline": "vs. MaxProb, temperature scaling, verbalized confidence"},
+    {"metric": "Abstention quality", "value": "Better accuracy-coverage curve", "baseline": "vs. fixed-threshold baselines"}
+  ],
+  "limitations": [
+    "Requires the model to generate an explicit confidence score token, adding to output format complexity.",
+    "Log scoring rule has extreme penalties near p=0 and p=1, which can cause training instability.",
+    "PPO training is computationally more expensive than GRPO used in TruthRL.",
+    "Confidence calibration assumes the model has some internal 'sense' of its reliability that can be elicited; for novel domains this assumption may not hold.",
+    "Evaluated primarily on factoid QA; unclear how well confidence calibration transfers to complex reasoning or generation tasks.",
+    "Threshold-based abstention at inference requires choosing a threshold, which is a deployment-time decision that depends on the use case."
+  ],
+  "connections": [
+    "Directly comparable to TruthRL: both use RL to train LLMs to manage uncertainty, but with different reward formulations.",
+    "Uses proper scoring rules from calibration theory; contrasts with TruthRL's simpler ternary reward.",
+    "RLCR (ICLR 2026) is conceptually similar, using Brier score instead of log scoring rule.",
+    "Confidence scores could complement TruthRL's binary abstention: a model could express graded uncertainty rather than just 'I don't know'.",
+    "Relevant to the symbolic process reward direction: could a symbolic reward capture reasoning-level confidence indicators?"
+  ],
+  "tags": ["abstention", "RL", "PPO", "calibration", "confidence", "proper-scoring-rules", "selective-prediction", "uncertainty"]
+}
