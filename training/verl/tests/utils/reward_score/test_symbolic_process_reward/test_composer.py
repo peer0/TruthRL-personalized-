@@ -93,3 +93,40 @@ class TestSymbolicProcessReward:
         )
         result = reward_phase_only.score(text)
         assert result["process_score"] == pytest.approx(result["phase_score"], abs=0.01)
+
+    def test_perfect_score_reaches_one(self):
+        """With default weights, perfect phase + no penalties should normalize to ~1.0."""
+        text = (
+            "<think>\n"
+            "The question asks about the capital of France. "
+            "Given that France is a European country, "
+            "we know that Paris has been the capital for centuries. "
+            "Therefore, based on this information, "
+            "the answer is Paris.\n"
+            "</think>\n\\boxed{Paris}"
+        )
+        result = self.reward.score(text)
+        assert result["gate_pass"] is True
+        assert result["phase_score"] > 0.5
+        assert result["ngram_penalty"] == pytest.approx(0.0, abs=0.01)
+        # After normalization, high phase + no penalties maps well above 0.7
+        assert result["process_score"] > 0.7
+
+    def test_max_penalties_reaches_zero(self):
+        """Max penalties with no phase signal should normalize near 0.0."""
+        repeated = "word "
+        text = (
+            "<think>\n"
+            + repeated * 200
+            + "\n</think>\n\\boxed{X}"
+        )
+        result = self.reward.score(text)
+        assert result["gate_pass"] is True
+        assert result["process_score"] < 0.3
+
+    def test_zero_weights_return_zero(self):
+        """All weights zero should safely return 0.0."""
+        reward = SymbolicProcessReward(w_phase=0.0, w_ngram=0.0, w_echo=0.0)
+        text = "<think>\nSome reasoning.\n</think>\n\\boxed{X}"
+        result = reward.score(text)
+        assert result["process_score"] == 0.0

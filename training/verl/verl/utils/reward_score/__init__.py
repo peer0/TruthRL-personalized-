@@ -117,9 +117,15 @@ def default_compute_score(
         # LLM-as-a-judge outcome reward (ternary: +1 correct, 0 abstain, -1 hallucinate)
         outcome_reward = truthrl_qa.compute_score_llm_as_a_judge_ternary(solution_str, ground_truth, process_reward)
 
-        # Additive combination (Section 4.6 of TruthRL paper)
+        # Additive combination (Section 4.6 of TruthRL paper).
+        # Only apply process bonus for correct/abstain outcomes.
+        # Hallucinations keep their full -1 penalty to prevent reward hacking
+        # (well-structured wrong answers must not be less penalized).
         process_lambda = 0.5
-        final_score = outcome_reward + process_lambda * process_reward
+        if outcome_reward < 0:
+            final_score = float(outcome_reward)
+        else:
+            final_score = outcome_reward + process_lambda * process_reward
 
         res = {
             'score': float(final_score),

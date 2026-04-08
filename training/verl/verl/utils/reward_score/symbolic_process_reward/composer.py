@@ -35,6 +35,11 @@ class SymbolicProcessReward:
         self.w_ngram = w_ngram
         self.w_echo = w_echo
 
+        # Normalization bounds: phase ∈ [0,1], penalties ∈ [-1,0]
+        self._max_raw = w_phase          # best case: phase=1, no penalties
+        self._min_raw = -(w_ngram + w_echo)  # worst case: phase=0, max penalties
+        self._range = self._max_raw - self._min_raw
+
         self.gate = FormatGateDFA()
         self.phase_scorer = PhaseTransitionScorer(alpha=phase_alpha)
         self.ngram_scorer = NGramRepetitionScorer(
@@ -75,7 +80,11 @@ class SymbolicProcessReward:
             + self.w_ngram * ngram_penalty
             + self.w_echo * echo_penalty
         )
-        process_score = max(0.0, min(1.0, raw))
+        # Affine normalization: [min_raw, max_raw] -> [0, 1]
+        if self._range > 0:
+            process_score = max(0.0, min(1.0, (raw - self._min_raw) / self._range))
+        else:
+            process_score = 0.0
 
         return {
             "process_score": process_score,
