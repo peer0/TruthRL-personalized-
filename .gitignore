@@ -169,6 +169,7 @@ cython_debug/
 
 .claude/
 .wolf/
+.github/
 docs/
 
 CLAUDE.md
